@@ -11,6 +11,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.*;
 
 @Component
@@ -30,7 +31,7 @@ public class VnPayHelper {   //hàm này quy định các key. cung cấp các m
 
     @Value("${vnp_ApiUrl}")
     public String vnp_ApiUrl;
-    private final Random rnd = new Random();
+    private final SecureRandom rnd = new SecureRandom();
 
     //mấy method từ đây trở xuống chủ yếu để nó tạo checksum, ta ko cần quan tậm cho lắm
     public String md5(String message) {
