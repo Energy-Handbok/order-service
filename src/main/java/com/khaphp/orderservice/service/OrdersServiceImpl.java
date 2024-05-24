@@ -39,14 +39,12 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.LinkedHashMap;
 import java.util.List;
 
 @Service
@@ -54,6 +52,11 @@ import java.util.List;
 @Slf4j
 public class OrdersServiceImpl implements OrdersService {
     public static final String OBJECT_NOT_FOUND = "object not found";
+    public static final String SUCCESS = "Success";
+    public static final String EXCEPTION_MSG = "Exception: ";
+    public static final String FOUND_MSG = "Found";
+    public static final String USER_NOT_FOUND_MSG = "user not found";
+    public static final String ORDER_NOT_FOUND_MSG = "Order not found";
     private final OrdersRepository ordersRepository;
     private final PaymentServiceCall paymentServiceCall;
     private final OrderDetailRepository orderDetailRepository;
@@ -86,7 +89,7 @@ public class OrdersServiceImpl implements OrdersService {
             pageIndex = 1;
         }
         return ResponseObject.builder()
-                .code(200).message("Success")
+                .code(200).message(SUCCESS)
                 .pageSize(objList.size()).pageIndex(pageIndex).totalPage(totalPage)
                 .data(objList)
                 .build();
@@ -136,13 +139,13 @@ public class OrdersServiceImpl implements OrdersService {
             }
             return ResponseObject.builder()
                     .code(200)
-                    .message("Found")
+                    .message(FOUND_MSG)
                     .data(dto)
                     .build();
         }catch (Exception e){
             return ResponseObject.builder()
                     .code(400)
-                    .message("Exception: "+ e.getMessage())
+                    .message(EXCEPTION_MSG + e.getMessage())
                     .build();
         }
     }
@@ -175,11 +178,11 @@ public class OrdersServiceImpl implements OrdersService {
 
             return ResponseObject.builder()
                     .code(200)
-                    .message("Success")
+                    .message(SUCCESS)
                     .data(order)
                     .build();
         }catch (Exception e){
-            throw new Exception("Exception: " + e.getMessage());
+            throw new Exception(EXCEPTION_MSG + e.getMessage());
         }
     }
 
@@ -216,11 +219,11 @@ public class OrdersServiceImpl implements OrdersService {
 
             return ResponseObject.builder()
                     .code(200)
-                    .message("Success")
+                    .message(SUCCESS)
                     .data((String) urlRs.getData())
                     .build();
         }catch (Exception e){
-            throw new Exception("Exception: " + e.getMessage());
+            throw new Exception(EXCEPTION_MSG + e.getMessage());
         }
     }
 
@@ -234,7 +237,7 @@ public class OrdersServiceImpl implements OrdersService {
             userSystem =  userServiceCall.getObject(object.getCustomerId());
         }
         if(userSystem == null){
-            throw new Exception("user not found");
+            throw new ObjectNotFound(USER_NOT_FOUND_MSG);
         }
         return userSystem;
     }
@@ -358,7 +361,7 @@ public class OrdersServiceImpl implements OrdersService {
         try{
             Order object1 = ordersRepository.findById(object.getOrderId()).orElse(null);
             if(object1 == null) {
-                throw new ObjectNotFound("Order not found");
+                throw new ObjectNotFound(ORDER_NOT_FOUND_MSG);
             }
             UserSystem employee = userServiceCall.getObject(object.getEmployeeId());
             if(employee == null){
@@ -374,12 +377,12 @@ public class OrdersServiceImpl implements OrdersService {
             ordersRepository.save(object1);
             return ResponseObject.builder()
                     .code(200)
-                    .message("Success")
+                    .message(SUCCESS)
                     .build();
         }catch (Exception e){
             return ResponseObject.builder()
                     .code(400)
-                    .message("Exception: " + e.getMessage())
+                    .message(EXCEPTION_MSG + e.getMessage())
                     .build();
         }
     }
@@ -389,7 +392,7 @@ public class OrdersServiceImpl implements OrdersService {
         try{
             Order object1 = ordersRepository.findById(orderId).orElse(null);
             if(object1 == null) {
-                throw new ObjectNotFound("Order not found");
+                throw new ObjectNotFound(ORDER_NOT_FOUND_MSG);
             }
             UserSystem shipper = userServiceCall.getObject(shipperId);
             if(shipper == null){
@@ -418,12 +421,12 @@ public class OrdersServiceImpl implements OrdersService {
 
             return ResponseObject.builder()
                     .code(200)
-                    .message("Success")
+                    .message(SUCCESS)
                     .build();
         }catch (Exception e){
             return ResponseObject.builder()
                     .code(400)
-                    .message("Exception: " + e.getMessage())
+                    .message(EXCEPTION_MSG + e.getMessage())
                     .build();
         }
     }
@@ -433,7 +436,7 @@ public class OrdersServiceImpl implements OrdersService {
         try{
             Order object1 = ordersRepository.findById(orderId).orElse(null);
             if(object1 == null) {
-                throw new ObjectNotFound("Order not found");
+                throw new ObjectNotFound(ORDER_NOT_FOUND_MSG);
             }
             UserSystem shipper = userServiceCall.getObject(shipperId);
             if(shipper == null){
@@ -449,12 +452,12 @@ public class OrdersServiceImpl implements OrdersService {
             ordersRepository.save(object1);
             return ResponseObject.builder()
                     .code(200)
-                    .message("Success")
+                    .message(SUCCESS)
                     .build();
         }catch (Exception e){
             return ResponseObject.builder()
                     .code(400)
-                    .message("Exception: " + e.getMessage())
+                    .message(EXCEPTION_MSG + e.getMessage())
                     .build();
         }
     }
@@ -464,7 +467,7 @@ public class OrdersServiceImpl implements OrdersService {
         try{
             Order object1 = ordersRepository.findById(orderId).orElse(null);
             if(object1 == null) {
-                throw new ObjectNotFound("Order not found");
+                throw new ObjectNotFound(ORDER_NOT_FOUND_MSG);
             }
             //valid role
             List<String> roleCheck = List.of(Role.CUSTOMER.toString(), Role.SHIPPER.toString(), Role.EMPLOYEE.toString());
@@ -503,12 +506,12 @@ public class OrdersServiceImpl implements OrdersService {
             ordersRepository.save(object1);
             return ResponseObject.builder()
                     .code(200)
-                    .message("Success")
+                    .message(SUCCESS)
                     .build();
         }catch (Exception e){
             return ResponseObject.builder()
                     .code(400)
-                    .message("Exception: " + e.getMessage())
+                    .message(EXCEPTION_MSG + e.getMessage())
                     .build();
         }
     }
@@ -548,12 +551,12 @@ public class OrdersServiceImpl implements OrdersService {
             ordersRepository.delete(object);
             return ResponseObject.builder()
                     .code(200)
-                    .message("Success")
+                    .message(SUCCESS)
                     .build();
         }catch (Exception e){
             return ResponseObject.builder()
                     .code(400)
-                    .message("Exception: " + e.getMessage())
+                    .message(EXCEPTION_MSG + e.getMessage())
                     .build();
         }
     }

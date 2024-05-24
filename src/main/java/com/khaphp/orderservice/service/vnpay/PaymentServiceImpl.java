@@ -26,6 +26,7 @@ import java.util.*;
 @Slf4j
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
+    public static final String THIRD_PARTY_MSG = "3party ";
     private final VnPayHelper vnPayHelper;
     private final UserServiceCall userServiceCall;
     private final PaymentServiceCall paymentServiceCall;
@@ -34,7 +35,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${aws.s3.link_bucket}")
     private String linkBucket;
     @Override
-    public ResponseObject<?> createPayment(HttpServletRequest req, int amount_param, String customerId, boolean isThirdParty, String orderId) {
+    public ResponseObject<Object> createPayment(HttpServletRequest req, int amount_param, String customerId, boolean isThirdParty, String orderId) {
         try {
             //check id customer
             UserSystem userSystem = userServiceCall.getObject(customerId);
@@ -67,7 +68,7 @@ public class PaymentServiceImpl implements PaymentService {
 //        }
             vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
             if(isThirdParty){
-                vnp_Params.put("vnp_OrderInfo", "3party "+orderId+": " + vnp_TxnRef + " cua UserID: " + customerId);
+                vnp_Params.put("vnp_OrderInfo", THIRD_PARTY_MSG +orderId+": " + vnp_TxnRef + " cua UserID: " + customerId);
             }else{
                 vnp_Params.put("vnp_OrderInfo", "Nap tien vao vi Energy Handbook: " + vnp_TxnRef + " cua UserID: " + customerId);   //chữ ko dấu nha
             }
@@ -135,7 +136,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     public static void main(String[] args) {
         String info = "3party 9483or39r3r4fdfdf2wr4c2: 32987430 cua UserID: 9437h-r49i7hf4-fkuhf387fdwu";
-        System.out.println(info.substring("3party ".length(), info.indexOf(':')));
+        System.out.println(info.substring(THIRD_PARTY_MSG.length(), info.indexOf(':')));
     }
     /*
     * http://localhost:8080/api/payment/payment_result
@@ -154,14 +155,14 @@ public class PaymentServiceImpl implements PaymentService {
         * */
 
     @Override
-    public ResponseObject<?> resultTransaction(String vnp_Amount, String vnp_BankCode, String vnp_OrderInfo, String vnp_PayDate, String vnp_ResponseCode) {
+    public ResponseObject<Object> resultTransaction(String vnp_Amount, String vnp_BankCode, String vnp_OrderInfo, String vnp_PayDate, String vnp_ResponseCode) {
         try {
-            ResponseObject responseObject = new ResponseObject();
+            ResponseObject<Object> responseObject = new ResponseObject();
             if (vnp_ResponseCode.equals("00")) {
                 log.info("payment from VNpay success");
                 //payment success
                 //check order info xem là customer hay guest booking
-                String sign3party = "3party ";
+                String sign3party = THIRD_PARTY_MSG;
                 if(vnp_OrderInfo.contains(sign3party)){
                     log.info("order third party: " + vnp_OrderInfo);
                     Order order = ordersRepository.findById(vnp_OrderInfo.substring(sign3party.length(), vnp_OrderInfo.indexOf(':'))).orElse(null);

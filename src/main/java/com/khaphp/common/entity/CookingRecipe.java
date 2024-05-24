@@ -35,7 +35,7 @@ public class CookingRecipe {
 
     private List<FoodTutorial> foodTutorials;
 
-    public static CookingRecipe mapFromLinkedHashMap(LinkedHashMap<String, Object> linkedHashMap) throws ParseException {
+    public static CookingRecipe getDataFromLinkedHashMap(LinkedHashMap<String, Object> linkedHashMap) throws ParseException {
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX");
         CookingRecipe cookingRecipe = new CookingRecipe();
         cookingRecipe.setId(linkedHashMap.get("id").toString());

@@ -1,6 +1,7 @@
 package com.khaphp.orderservice.util;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +14,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 @Component
+@RequiredArgsConstructor
 public class VnPayHelper {   //hàm này quy định các key. cung cấp các method để tạo chuỗi checksum (bảo đảm data ko bị thay đổi trong quá trình truyền từ client sang vnpay và ngc lại)
     @Value("${vnp_PayUrl}")
     public String vnp_PayUrl;
@@ -28,6 +30,7 @@ public class VnPayHelper {   //hàm này quy định các key. cung cấp các m
 
     @Value("${vnp_ApiUrl}")
     public String vnp_ApiUrl;
+    private final Random rnd = new Random();
 
     //mấy method từ đây trở xuống chủ yếu để nó tạo checksum, ta ko cần quan tậm cho lắm
     public String md5(String message) {
@@ -124,7 +127,7 @@ public class VnPayHelper {   //hàm này quy định các key. cung cấp các m
     }
 
     public String getRandomNumber(int len) {
-        Random rnd = new Random();
+//        Random rnd = new Random();
         String chars = "0123456789";
         StringBuilder sb = new StringBuilder(len);
         for (int i = 0; i < len; i++) {

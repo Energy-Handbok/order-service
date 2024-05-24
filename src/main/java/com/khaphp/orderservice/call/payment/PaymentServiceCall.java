@@ -24,6 +24,7 @@ import java.util.Objects;
 public class PaymentServiceCall {
     public static final String CALL_OTHER_SERVICE_ERROR = "Call other service error: {}";
     public static final String CALL_OTHER_SERVICE = "Call other service";
+    public static final String RESPONSE_MSG = "response ";
     private final PaymentServiceFeignClient paymentServiceFeignClient;
     private final CircuitBreakerFactory circuitBreakerFactory;
 
@@ -33,7 +34,7 @@ public class PaymentServiceCall {
                 () -> {
                     log.info(where + CALL_OTHER_SERVICE);
                     ResponseEntity<?> responseEntity = paymentServiceFeignClient.detailObject(customerId); //data: Notification
-                    log.info("response " + where + ": " + responseEntity);
+                    log.info(RESPONSE_MSG + where + ": " + responseEntity);
                     if (responseEntity.getStatusCode().is2xxSuccessful()) {
                         return getObjectFromResponse((LinkedHashMap<String, Object>) responseEntity.getBody());
                     } else {
@@ -56,7 +57,7 @@ public class PaymentServiceCall {
                 () -> {
                     log.info(where + CALL_OTHER_SERVICE);
                     ResponseEntity<?> responseEntity = paymentServiceFeignClient.updateObjectBalance(object); //data: Notification
-                    log.info("response " + where + ": " + responseEntity);
+                    log.info(RESPONSE_MSG + where + ": " + responseEntity);
                     if (responseEntity.getStatusCode().is2xxSuccessful()) {
                         return StatusResponse.SUCCESS.toString();
                     } else {
@@ -76,7 +77,7 @@ public class PaymentServiceCall {
                 () -> {
                     log.info(where + CALL_OTHER_SERVICE);
                     ResponseEntity<?> responseEntity = paymentServiceFeignClient.createObject(object); //data: Notification
-                    log.info("response " + where + ": " + responseEntity);
+                    log.info(RESPONSE_MSG + where + ": " + responseEntity);
                     if (responseEntity.getStatusCode().is2xxSuccessful()) {
                         LinkedHashMap<String, Object> body = (LinkedHashMap<String, Object>) responseEntity.getBody();
                         LinkedHashMap<String, Object> data = (LinkedHashMap<String, Object>) body.get("data");
