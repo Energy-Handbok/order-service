@@ -27,6 +27,7 @@ import com.khaphp.orderservice.dto.OrderDetail.OrderDetailDToviewInOrtherEntity;
 import com.khaphp.orderservice.entity.Order;
 import com.khaphp.orderservice.entity.OrderDetail;
 import com.khaphp.orderservice.entity.PaymentOrder;
+import com.khaphp.orderservice.exception.ErrorFound;
 import com.khaphp.orderservice.exception.ObjectNotFound;
 import com.khaphp.orderservice.repo.OrderDetailRepository;
 import com.khaphp.orderservice.repo.OrdersRepository;
@@ -182,7 +183,7 @@ public class OrdersServiceImpl implements OrdersService {
                     .data(order)
                     .build();
         }catch (Exception e){
-            throw new Exception(EXCEPTION_MSG + e.getMessage());
+            throw new ErrorFound(EXCEPTION_MSG + e.getMessage());
         }
     }
 
@@ -223,7 +224,7 @@ public class OrdersServiceImpl implements OrdersService {
                     .data((String) urlRs.getData())
                     .build();
         }catch (Exception e){
-            throw new Exception(EXCEPTION_MSG + e.getMessage());
+            throw new ErrorFound(EXCEPTION_MSG + e.getMessage());
         }
     }
 

@@ -35,7 +35,7 @@ public class PaymentServiceImpl implements PaymentService {
     @Value("${aws.s3.link_bucket}")
     private String linkBucket;
     @Override
-    public ResponseObject<Object> createPayment(HttpServletRequest req, int amount_param, String customerId, boolean isThirdParty, String orderId) {
+    public ResponseObject<Object> createPayment(HttpServletRequest req, int amountParam, String customerId, boolean isThirdParty, String orderId) {
         try {
             //check id customer
             UserSystem userSystem = userServiceCall.getObject(customerId);
@@ -48,7 +48,7 @@ public class PaymentServiceImpl implements PaymentService {
             String vnp_Version = "2.1.0";
             String vnp_Command = "pay";
             String orderType = "other";
-            long amount = amount_param * 100;       //số tiền phải nhận với 100, quy định của vn pay
+            long amount = amountParam * 100;       //số tiền phải nhận với 100, quy định của vn pay
 //        String bankCode = req.getParameter("bankCode");
             //nếu ko truyền giá trị này thì nó sẽ cho ta chọn ngân hàng để thanh toán
             String vnp_TxnRef = vnPayHelper.getRandomNumber(8);
@@ -136,7 +136,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     public static void main(String[] args) {
         String info = "3party 9483or39r3r4fdfdf2wr4c2: 32987430 cua UserID: 9437h-r49i7hf4-fkuhf387fdwu";
-        System.out.println(info.substring(THIRD_PARTY_MSG.length(), info.indexOf(':')));
+        log.info(info.substring(THIRD_PARTY_MSG.length(), info.indexOf(':')));
     }
     /*
     * http://localhost:8080/api/payment/payment_result
@@ -155,17 +155,17 @@ public class PaymentServiceImpl implements PaymentService {
         * */
 
     @Override
-    public ResponseObject<Object> resultTransaction(String vnp_Amount, String vnp_BankCode, String vnp_OrderInfo, String vnp_PayDate, String vnp_ResponseCode) {
+    public ResponseObject<Object> resultTransaction(String vnpAmount, String vnpBankCode, String vnpOrderInfo, String vnpPayDate, String vnpResponseCode) {
         try {
-            ResponseObject<Object> responseObject = new ResponseObject();
-            if (vnp_ResponseCode.equals("00")) {
+            ResponseObject<Object> responseObject = new ResponseObject<>();
+            if (vnpResponseCode.equals("00")) {
                 log.info("payment from VNpay success");
                 //payment success
                 //check order info xem là customer hay guest booking
                 String sign3party = THIRD_PARTY_MSG;
-                if(vnp_OrderInfo.contains(sign3party)){
-                    log.info("order third party: " + vnp_OrderInfo);
-                    Order order = ordersRepository.findById(vnp_OrderInfo.substring(sign3party.length(), vnp_OrderInfo.indexOf(':'))).orElse(null);
+                if(vnpOrderInfo.contains(sign3party)){
+                    log.info("order third party: " + vnpOrderInfo);
+                    Order order = ordersRepository.findById(vnpOrderInfo.substring(sign3party.length(), vnpOrderInfo.indexOf(':'))).orElse(null);
                     if(order == null){
                         throw new Exception("order not found");
                     }
@@ -173,29 +173,29 @@ public class PaymentServiceImpl implements PaymentService {
                     ordersRepository.save(order);
 
                 }else{ //customer
-                    log.info("customer payment : " + vnp_OrderInfo);
+                    log.info("customer payment : " + vnpOrderInfo);
                     //khúc này có thể lưu DB or tăng số tiền đã nạp vào ví
-                    int tmp = vnp_OrderInfo.lastIndexOf(":");
-                    String idCus = vnp_OrderInfo.substring(tmp + 1).trim();
+                    int tmp = vnpOrderInfo.lastIndexOf(":");
+                    String idCus = vnpOrderInfo.substring(tmp + 1).trim();
                     UserSystem userSystem = userServiceCall.getObject(idCus);
                     userSystem.setImgUrl(userSystem.getImgUrl().substring(linkBucket.length()));
                     if (userSystem != null) {
                         //cập nhật ví
                         String rs = paymentServiceCall.updateObjectBalance(WalletDTOupdate.builder()
                                 .customerId(idCus)
-                                .balance(Integer.parseInt(vnp_Amount) / 100).build() //tại lúc đầu tạo * 100, nên giờ chia 100 cho đúng
+                                .balance(Integer.parseInt(vnpAmount) / 100).build() //tại lúc đầu tạo * 100, nên giờ chia 100 cho đúng
                                 );
                         if (!rs.equals(StatusResponse.SUCCESS.toString())) {
                             throw new Exception("update balance fail: " + rs);
                         }
                         //cập nhật transaction này
-                        String formatvnp_PayDate = vnp_PayDate.substring(0, 4) + "-" + vnp_PayDate.substring(4, 6) + "-" + vnp_PayDate.substring(6, 8)
-                                + " " + vnp_PayDate.substring(8, 10) + ":" + vnp_PayDate.substring(10, 12) + ":" + vnp_PayDate.substring(12, 14);
+                        String formatvnp_PayDate = vnpPayDate.substring(0, 4) + "-" + vnpPayDate.substring(4, 6) + "-" + vnpPayDate.substring(6, 8)
+                                + " " + vnpPayDate.substring(8, 10) + ":" + vnpPayDate.substring(10, 12) + ":" + vnpPayDate.substring(12, 14);
                         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
                         rs = "";
                         rs = paymentServiceCall.createObject(WalletTransactionDTOcreate.builder()
-                                .customerId(idCus).amount(Integer.parseInt(vnp_Amount) / 100)
-                                .description(vnp_OrderInfo).createDate(format.parse(formatvnp_PayDate))
+                                .customerId(idCus).amount(Integer.parseInt(vnpAmount) / 100)
+                                .description(vnpOrderInfo).createDate(format.parse(formatvnp_PayDate))
                                 .build());
                         if (!rs.equals(StatusResponse.SUCCESS.toString())) {
                             throw new Exception("create transaction fail: " + rs);
@@ -205,18 +205,18 @@ public class PaymentServiceImpl implements PaymentService {
 
                 //set up response object
                 responseObject.setCode(200);
-                if(vnp_OrderInfo.contains("guestbooking:")){
+                if(vnpOrderInfo.contains("guestbooking:")){
                     responseObject.setMessage("Successfully-guest");
                 }else{
                     responseObject.setMessage("Successfully");
                 }
-                responseObject.setData(vnp_OrderInfo);
+                responseObject.setData(vnpOrderInfo);
             } else {
                 log.error("payment from VNpay fail");
                 //payment fail
                 responseObject.setCode(400);
                 responseObject.setMessage("Failed");
-                responseObject.setData(vnp_OrderInfo);
+                responseObject.setData(vnpOrderInfo);
             }
             return responseObject;
         } catch (Exception e) {

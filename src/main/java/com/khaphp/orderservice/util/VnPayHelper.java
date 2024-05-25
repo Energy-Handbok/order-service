@@ -128,7 +128,6 @@ public class VnPayHelper {   //hàm này quy định các key. cung cấp các m
     }
 
     public String getRandomNumber(int len) {
-//        Random rnd = new Random();
         String chars = "0123456789";
         StringBuilder sb = new StringBuilder(len);
         for (int i = 0; i < len; i++) {

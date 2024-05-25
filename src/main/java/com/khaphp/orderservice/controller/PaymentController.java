@@ -18,10 +18,10 @@ public class PaymentController {
     private final PaymentService paymentService;
 
     @GetMapping
-    public ResponseEntity<?> getAll(HttpServletRequest req,
+    public ResponseEntity<Object> getAll(HttpServletRequest req,
                                     @RequestParam @Min(10000) int amount,
                                     @RequestParam String customerId){
-        ResponseObject<?> responseObject = paymentService.createPayment(req, amount, customerId, false, "");
+        ResponseObject<Object> responseObject = paymentService.createPayment(req, amount, customerId, false, "");
         if(responseObject.getCode() == 200){
             return ResponseEntity.ok(responseObject);
         }
@@ -29,13 +29,13 @@ public class PaymentController {
     }
 
     @GetMapping("/payment_result")
-    public ResponseEntity<?> transaction(   //hàm bắt kq giao dịch (transaction - success, fail, hủy thanh toán, ...) về từ VNPAY
+    public ResponseEntity<Object> transaction(   //hàm bắt kq giao dịch (transaction - success, fail, hủy thanh toán, ...) về từ VNPAY
                                             @RequestParam(value = "vnp_Amount") String vnp_Amount,
                                             @RequestParam(value = "vnp_BankCode") String vnp_BankCode,
                                             @RequestParam(value = "vnp_OrderInfo") String vnp_OrderInfo,
                                             @RequestParam(value = "vnp_PayDate") String vnp_PayDate,
                                             @RequestParam(value = "vnp_ResponseCode") String vnp_ResponseCode) {
-        ResponseObject<?> rs = paymentService.resultTransaction(vnp_Amount, vnp_BankCode, vnp_OrderInfo, vnp_PayDate, vnp_ResponseCode);
+        ResponseObject<Object> rs = paymentService.resultTransaction(vnp_Amount, vnp_BankCode, vnp_OrderInfo, vnp_PayDate, vnp_ResponseCode);
         if(rs.getCode() == 200){
             return ResponseEntity.ok(rs);
         }else {
