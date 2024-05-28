@@ -44,9 +44,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -58,6 +56,8 @@ public class OrdersServiceImpl implements OrdersService {
     public static final String FOUND_MSG = "Found";
     public static final String USER_NOT_FOUND_MSG = "user not found";
     public static final String ORDER_NOT_FOUND_MSG = "Order not found";
+    public static final String EVENT_CREATE_ORDER_1_UPDATE_WALLET = "update wallet";
+    public static final String EVENT_CREATE_ORDER_2_CREATE_TRANSACTION = "create transaction";
     private final OrdersRepository ordersRepository;
     private final PaymentServiceCall paymentServiceCall;
     private final OrderDetailRepository orderDetailRepository;
@@ -154,6 +154,7 @@ public class OrdersServiceImpl implements OrdersService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public ResponseObject<Object> create(OrderDTOcreate object) throws Exception {
+        Map<String, String> event = new HashMap<>();
         try{
             //check user
             UserSystem userSystem = validateUserInOrder(object);
@@ -164,7 +165,7 @@ public class OrdersServiceImpl implements OrdersService {
 
             //nếu là wallet thì check balance để trừ tiền
             if(object.getMethod().equals(Method.WALLET.toString())){
-                checkBalanceToMinus(order, userSystem, object);
+                checkBalanceToMinus(order, userSystem, object, event);
             }
 
             //create order detail
@@ -183,6 +184,18 @@ public class OrdersServiceImpl implements OrdersService {
                     .data(order)
                     .build();
         }catch (Exception e){
+            //rollback
+//            if(event.get(EVENT_CREATE_ORDER_1_UPDATE_WALLET) != null){
+//                if(object.getPhoneGuest() == null){
+//                    //user order
+//                    int balance = Integer.parseInt(event.get(EVENT_CREATE_ORDER_1_UPDATE_WALLET));
+//                    WalletDTOupdate walletDTOupdate = WalletDTOupdate.builder().customerId(object.getCustomerId()).balance(balance).build();
+//                    paymentServiceCall.updateObjectBalance(walletDTOupdate);
+//                }
+//            }
+//            if(event.get(EVENT_CREATE_ORDER_2_CREATE_TRANSACTION) != null){
+//
+//            }
             throw new ErrorFound(EXCEPTION_MSG + e.getMessage());
         }
     }
@@ -285,7 +298,7 @@ public class OrdersServiceImpl implements OrdersService {
         return orderDetail;
     }
 
-    private void checkBalanceToMinus(Order order, UserSystem userSystem, OrderDTOcreate object) throws Exception {
+    private void checkBalanceToMinus(Order order, UserSystem userSystem, OrderDTOcreate object, Map<String, String> event) throws Exception {
         int totalPrice = 0;
         //tính totalprice trước để check tiền trừ
         for (OrderDetailDTOcreate orderDetailDTOcreate : object.getOrderDetails()) {
@@ -304,6 +317,7 @@ public class OrdersServiceImpl implements OrdersService {
                 if(!response.equals(StatusResponse.SUCCESS.toString())){
                     throw new Exception("update wallet fail: " + response);
                 }else{
+                    event.put(EVENT_CREATE_ORDER_1_UPDATE_WALLET, String.valueOf(walletDTOupdate.getBalance()));
                     log.info("update wallet success: " + response +  "|" + walletDTOupdate.toString());
                 }
             }catch (Exception e){
@@ -319,6 +333,7 @@ public class OrdersServiceImpl implements OrdersService {
                 if(!response.contains(StatusResponse.SUCCESS.toString())){
                     throw new Exception("create transaction fail: " + response);
                 }else{
+                    event.put(EVENT_CREATE_ORDER_2_CREATE_TRANSACTION, response);
                     log.info("create transaction success: " + response);
                 }
             }catch (Exception e){

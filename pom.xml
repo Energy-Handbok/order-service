@@ -19,6 +19,11 @@
 	</properties>
 	<dependencies>
 		<dependency>
+			<groupId>org.springframework.kafka</groupId>
+			<artifactId>spring-kafka</artifactId>
+		</dependency>
+
+		<dependency>
 			<groupId>org.modelmapper</groupId>
 			<artifactId>modelmapper</artifactId>
 			<version>3.2.0</version>
@@ -111,6 +116,7 @@
 						<exclude>**/repo/**</exclude>
 						<exclude>**/util/**</exclude>
 						<exclude>**/service/vnpay/**</exclude>
+						<exclude>**/service/kafka/**</exclude>
 						<exclude>**/OrderServiceApplication.*</exclude>
 					</excludes>
 				</configuration>
