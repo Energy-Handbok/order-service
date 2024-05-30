@@ -1,6 +1,7 @@
 package com.khaphp.orderservice.service.vnpay;
 
 import com.khaphp.common.dto.ResponseObject;
+import com.khaphp.common.dto.food.FoodDTOupdate;
 import com.khaphp.common.dto.payment.WalletDTOupdate;
 import com.khaphp.common.dto.payment.WalletTransactionDTOcreate;
 import com.khaphp.common.entity.UserSystem;
@@ -8,8 +9,11 @@ import com.khaphp.orderservice.call.payment.PaymentServiceCall;
 import com.khaphp.orderservice.call.userservice.UserServiceCall;
 import com.khaphp.orderservice.constant.StatusOrder;
 import com.khaphp.orderservice.constant.StatusResponse;
+import com.khaphp.orderservice.constant.ThirdParty;
 import com.khaphp.orderservice.entity.Order;
+import com.khaphp.orderservice.entity.OrderDetail;
 import com.khaphp.orderservice.repo.OrdersRepository;
+import com.khaphp.orderservice.service.kafka.KafkaMessagePulisher;
 import com.khaphp.orderservice.util.VnPayHelper;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -26,11 +30,11 @@ import java.util.*;
 @Slf4j
 @RequiredArgsConstructor
 public class PaymentServiceImpl implements PaymentService {
-    public static final String THIRD_PARTY_MSG = "3party ";
     private final VnPayHelper vnPayHelper;
     private final UserServiceCall userServiceCall;
     private final PaymentServiceCall paymentServiceCall;
     private final OrdersRepository ordersRepository;
+    private final KafkaMessagePulisher kafkaMessagePulisher;
 
     @Value("${aws.s3.link_bucket}")
     private String linkBucket;
@@ -68,7 +72,7 @@ public class PaymentServiceImpl implements PaymentService {
 //        }
             vnp_Params.put("vnp_TxnRef", vnp_TxnRef);
             if(isThirdParty){
-                vnp_Params.put("vnp_OrderInfo", THIRD_PARTY_MSG +orderId+": " + vnp_TxnRef + " cua UserID: " + customerId);
+                vnp_Params.put("vnp_OrderInfo", ThirdParty.THIRD_PARTY_MSG +orderId+": " + vnp_TxnRef + " cua UserID: " + customerId);
             }else{
                 vnp_Params.put("vnp_OrderInfo", "Nap tien vao vi Energy Handbook: " + vnp_TxnRef + " cua UserID: " + customerId);   //chữ ko dấu nha
             }
@@ -136,7 +140,7 @@ public class PaymentServiceImpl implements PaymentService {
 
     public static void main(String[] args) {
         String info = "3party 9483or39r3r4fdfdf2wr4c2: 32987430 cua UserID: 9437h-r49i7hf4-fkuhf387fdwu";
-        log.info(info.substring(THIRD_PARTY_MSG.length(), info.indexOf(':')));
+        log.info(info.substring(ThirdParty.THIRD_PARTY_MSG.length(), info.indexOf(':')));
     }
     /*
     * http://localhost:8080/api/payment/payment_result
@@ -162,7 +166,7 @@ public class PaymentServiceImpl implements PaymentService {
                 log.info("payment from VNpay success");
                 //payment success
                 //check order info xem là customer hay guest booking
-                String sign3party = THIRD_PARTY_MSG;
+                String sign3party = ThirdParty.THIRD_PARTY_MSG;
                 if(vnpOrderInfo.contains(sign3party)){
                     log.info("order third party: " + vnpOrderInfo);
                     Order order = ordersRepository.findById(vnpOrderInfo.substring(sign3party.length(), vnpOrderInfo.indexOf(':'))).orElse(null);
@@ -213,6 +217,16 @@ public class PaymentServiceImpl implements PaymentService {
                 responseObject.setData(vnpOrderInfo);
             } else {
                 log.error("payment from VNpay fail");
+                //check if order info contain third party -> we must delete this order b/c cus or guest buy by third party (vn pay) and don't pay or pay fail
+                if(vnpOrderInfo.contains(ThirdParty.THIRD_PARTY_MSG)){
+                    Order order = ordersRepository.findById(vnpOrderInfo.substring(ThirdParty.THIRD_PARTY_MSG.length(), vnpOrderInfo.indexOf(':'))).orElse(null);
+                    if(Objects.requireNonNull(order).getOrderDetails() != null && order.getOrderDetails().size() > 0){
+                        for(OrderDetail orderDetail: order.getOrderDetails()){
+                            kafkaMessagePulisher.updateStockFood(FoodDTOupdate.builder().id(orderDetail.getFoodId()).stock(orderDetail.getAmount()).build());
+                        }
+                    }
+                    ordersRepository.delete(order);
+                }
                 //payment fail
                 responseObject.setCode(400);
                 responseObject.setMessage("Failed");

@@ -37,11 +37,11 @@ public class Order {
     @Column(columnDefinition = "VARCHAR(36)")
     private String customerId;
 
-    @OneToMany(mappedBy = "order")
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     @JsonIgnore
     private List<OrderDetail> orderDetails;
 
-    @OneToOne(mappedBy = "order")
+    @OneToOne(mappedBy = "order", cascade = CascadeType.ALL)
     @JsonIgnore
     private PaymentOrder paymentOrder;
 }
