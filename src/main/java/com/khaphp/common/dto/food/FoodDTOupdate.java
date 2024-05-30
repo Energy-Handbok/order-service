@@ -9,6 +9,7 @@ import lombok.*;
 @Getter
 @Setter
 @ToString
+@Builder
 public class FoodDTOupdate {
     private String id;
     @Size(min=1, max=255, message = "name length from 1 to 255")

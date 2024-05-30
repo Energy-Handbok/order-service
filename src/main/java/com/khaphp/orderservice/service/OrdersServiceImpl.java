@@ -32,6 +32,7 @@ import com.khaphp.orderservice.exception.ObjectNotFound;
 import com.khaphp.orderservice.repo.OrderDetailRepository;
 import com.khaphp.orderservice.repo.OrdersRepository;
 import com.khaphp.orderservice.repo.PaymentOrderRepository;
+import com.khaphp.orderservice.service.kafka.KafkaMessagePulisher;
 import com.khaphp.orderservice.service.vnpay.PaymentService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +43,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
@@ -58,6 +58,7 @@ public class OrdersServiceImpl implements OrdersService {
     public static final String ORDER_NOT_FOUND_MSG = "Order not found";
     public static final String EVENT_CREATE_ORDER_1_UPDATE_WALLET = "update wallet";
     public static final String EVENT_CREATE_ORDER_2_CREATE_TRANSACTION = "create transaction";
+    public static final String EVENT_CREATE_ORDER_3_UPDATE_STOCK_FOOD = "update stock food";
     private final OrdersRepository ordersRepository;
     private final PaymentServiceCall paymentServiceCall;
     private final OrderDetailRepository orderDetailRepository;
@@ -65,7 +66,7 @@ public class OrdersServiceImpl implements OrdersService {
     private final UserServiceCall userServiceCall;
     private final FoodServiceCall foodServiceCall;
     private final ModelMapper modelMapper;
-    private final RestTemplate restTemplate;
+    private final KafkaMessagePulisher kafkaMessagePulisher;
     private final NotiServiceCall notiServiceCall;
     private final PaymentService paymentService;
 
@@ -153,8 +154,9 @@ public class OrdersServiceImpl implements OrdersService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public ResponseObject<Object> create(OrderDTOcreate object) throws Exception {
+    public ResponseObject<Object> create(OrderDTOcreate object) {
         Map<String, String> event = new HashMap<>();
+        int tmp_event_create_order_3 = -1;
         try{
             //check user
             UserSystem userSystem = validateUserInOrder(object);
@@ -173,6 +175,9 @@ public class OrdersServiceImpl implements OrdersService {
                 OrderDetail orderDetail = createOrderDetail(order, orderDetailDTOcreate);
                 //cập nhật total price cho order
                 order.setTotalPrice(order.getTotalPrice() + (orderDetail.getAmount() * orderDetail.getPrice()));
+                //ghi lại event này
+                tmp_event_create_order_3++;
+                event.put(EVENT_CREATE_ORDER_3_UPDATE_STOCK_FOOD + tmp_event_create_order_3, orderDetail.getFoodId() + "|" + orderDetail.getAmount());
             }
 
             //create payment order
@@ -181,22 +186,36 @@ public class OrdersServiceImpl implements OrdersService {
             return ResponseObject.builder()
                     .code(200)
                     .message(SUCCESS)
-                    .data(order)
+                    .data(event)
                     .build();
+
         }catch (Exception e){
             //rollback
-//            if(event.get(EVENT_CREATE_ORDER_1_UPDATE_WALLET) != null){
-//                if(object.getPhoneGuest() == null){
-//                    //user order
-//                    int balance = Integer.parseInt(event.get(EVENT_CREATE_ORDER_1_UPDATE_WALLET));
-//                    WalletDTOupdate walletDTOupdate = WalletDTOupdate.builder().customerId(object.getCustomerId()).balance(balance).build();
-//                    paymentServiceCall.updateObjectBalance(walletDTOupdate);
-//                }
-//            }
-//            if(event.get(EVENT_CREATE_ORDER_2_CREATE_TRANSACTION) != null){
-//
-//            }
+            rollBackCreateOrder(object, event, tmp_event_create_order_3);
             throw new ErrorFound(EXCEPTION_MSG + e.getMessage());
+        }
+    }
+
+    private void rollBackCreateOrder(OrderDTOcreate object, Map<String, String> event, int tmp_event_create_order_3) {
+        if(event.get(EVENT_CREATE_ORDER_1_UPDATE_WALLET) != null){
+            if(object.getPhoneGuest() == null){
+                //user order
+                int balance = Integer.parseInt(event.get(EVENT_CREATE_ORDER_1_UPDATE_WALLET));
+                WalletDTOupdate walletDTOupdate = WalletDTOupdate.builder().customerId(object.getCustomerId()).balance(balance*(-1)).build();
+                kafkaMessagePulisher.updateBalanceWallet(walletDTOupdate);
+            }
+        }
+        if(event.get(EVENT_CREATE_ORDER_2_CREATE_TRANSACTION) != null){
+            String msg = event.get(EVENT_CREATE_ORDER_2_CREATE_TRANSACTION);    //SUCCESS|97686dc8-2830-43c2-a9fc-a607df1af613
+            kafkaMessagePulisher.deleteTransactionById(msg.substring(msg.indexOf("|") + 1));
+        }
+        if(tmp_event_create_order_3 > -1){
+            for(int i = 0; i <= tmp_event_create_order_3; i++){
+                String msg = event.get(EVENT_CREATE_ORDER_3_UPDATE_STOCK_FOOD + i);
+                String[] arr = msg.split("\\|");    // | thì ko đc, phải \\| thì nó mới hiểu
+                FoodDTOupdate foodDTOupdate = FoodDTOupdate.builder().id(arr[0]).stock(Float.parseFloat(arr[1])).build();
+                kafkaMessagePulisher.updateStockFood(foodDTOupdate);
+            }
         }
     }
 
@@ -278,7 +297,7 @@ public class OrdersServiceImpl implements OrdersService {
 
         //check stock của food trogn kho xem còn đủ không
         if(food.getStock() < orderDetail.getAmount()){
-            throw new Exception("stock not enough");
+            throw new Exception("stock of "+food.getName()+" not enough");
         }
 //        orderDetail.setId(new OrderDetailKey(food.getId(), order.getId()));
         orderDetail.setFoodId(food.getId());
@@ -291,6 +310,7 @@ public class OrdersServiceImpl implements OrdersService {
         String response = foodServiceCall.update(foodDTOupdate);
         if(!response.equals(StatusResponse.SUCCESS.toString())){
             log.error("update food error: " + response);
+            throw new Exception("update stock food error");
         }else{
             log.info("update food success: " + response + "|" + foodDTOupdate.toString());
         }

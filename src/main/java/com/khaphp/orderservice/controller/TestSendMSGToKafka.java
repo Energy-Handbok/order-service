@@ -1,6 +1,7 @@
 package com.khaphp.orderservice.controller;
 
 
+import com.khaphp.common.dto.food.FoodDTOupdate;
 import com.khaphp.common.dto.payment.WalletDTOupdate;
 import com.khaphp.orderservice.service.kafka.KafkaMessagePulisher;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class TestSendMSGToKafka {
 
     @PostMapping
     public String testSend2(){
-        kafkaMessagePulisher.updateStockFood(WalletDTOupdate.builder().balance(10000).customerId("1").build());
+        kafkaMessagePulisher.updateStockFood(FoodDTOupdate.builder().id("111").stock(9).build());
         return "success";
     }
 

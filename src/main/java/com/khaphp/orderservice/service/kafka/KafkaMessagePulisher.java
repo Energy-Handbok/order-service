@@ -1,5 +1,6 @@
 package com.khaphp.orderservice.service.kafka;
 
+import com.khaphp.common.dto.food.FoodDTOupdate;
 import com.khaphp.common.dto.payment.WalletDTOupdate;
 import com.khaphp.orderservice.constant.TopicEventKafka;
 import lombok.RequiredArgsConstructor;
@@ -36,13 +37,13 @@ public class KafkaMessagePulisher {
         });
     }
 
-    public void updateStockFood(WalletDTOupdate walletDTOupdate){
-        CompletableFuture<SendResult<String, Object>> future = template.send(TopicEventKafka.UPDATE_STOCK_FOOD.name(), walletDTOupdate);
+    public void updateStockFood(FoodDTOupdate object){
+        CompletableFuture<SendResult<String, Object>> future = template.send(TopicEventKafka.UPDATE_STOCK_FOOD.name(), object);
         future.whenComplete((result, ex) -> {
             if(ex == null){
-                System.out.println("Send message=[" + walletDTOupdate.toString() + "] with offset=[" + result.getRecordMetadata().offset() + "]");
+                System.out.println("Send message=[" + object.toString() + "] with offset=[" + result.getRecordMetadata().offset() + "]");
             }else{
-                System.out.println("Unable to send message=[" + walletDTOupdate.toString() + "] due to : " + ex.getMessage());
+                System.out.println("Unable to send message=[" + object.toString() + "] due to : " + ex.getMessage());
             }
         });
     }
